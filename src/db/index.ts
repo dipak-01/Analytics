@@ -1,13 +1,15 @@
-// Database connection - Neon + Drizzle
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import dotenv from "dotenv"
+// Database connection - Neon + Drizzle (schema-aware)
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import * as schema from "./schema";
+import dotenv from "dotenv";
 dotenv.config();
 
 if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is not set in .env");
+  throw new Error("DATABASE_URL is not set in .env");
 }
 
 const sql = neon(process.env.DATABASE_URL);
-const db = drizzle({ client: sql });
-export { sql,db };
+const db = drizzle({ client: sql, schema });
+
+export { sql, db };

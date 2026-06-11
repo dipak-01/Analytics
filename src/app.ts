@@ -1,41 +1,45 @@
-import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { eq } from 'drizzle-orm';
-import { usersTable } from './db/schema';
-  
-const db = drizzle(process.env.DATABASE_URL!);
+import "dotenv/config";
+import express, { Request, Response, NextFunction } from "express";
+import corsMiddleware from "./middleware/cors";
 
-async function main() {
-  const user: typeof usersTable.$inferInsert = {
-    name: 'John',
-    age: 30,
-    email: 'john@example.com',
-  };
+// Route imports
+import healthRouter from "./routes/health";
+import collectRouter from "./routes/collect";
+import sitesRouter from "./routes/sites";
+import analyticsRouter from "./routes/analytics";
 
-  await db.insert(usersTable).values(user);
-  console.log('New user created!')
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  const users = await db.select().from(usersTable);
-  console.log('Getting all users from the database: ', users)
-  /*
-  const users: {
-    id: number;
-    name: string;
-    age: number;
-    email: string;
-  }[]
-  */
+// ─── Middleware ──────────────────────────────────────────────────────────────
 
-  await db
-    .update(usersTable)
-    .set({
-      age: 31,
-    })
-    .where(eq(usersTable.email, user.email));
-  console.log('User info updated!')
+app.use(corsMiddleware);
+app.use(express.json());
 
-  await db.delete(usersTable).where(eq(usersTable.email, user.email));
-  console.log('User deleted!')
-}
+// ─── Routes ─────────────────────────────────────────────────────────────────
 
-main();
+app.use(healthRouter);    // GET /health
+app.use(collectRouter);   // POST /collect
+app.use(sitesRouter);     // GET/POST /sites
+app.use(analyticsRouter); // GET /analytics/:siteId/*
+
+// ─── 404 Handler ────────────────────────────────────────────────────────────
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// ─── Global Error Handler ───────────────────────────────────────────────────
+
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+// ─── Start Server ───────────────────────────────────────────────────────────
+
+app.listen(PORT, () => {
+  console.log(`🚀 Analytics backend running on http://localhost:${PORT}`);
+});
+
+export default app;
